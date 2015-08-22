@@ -1,0 +1,83 @@
+---
+title: "Course 8 - Course Project"
+output: html_document
+---
+##Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+
+##Data
+The training data for this project are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+##Loading of Data
+First, we will load the libraries we are using.
+```{r}
+library(caret)
+library(kernlab)
+library(randomForest)
+library(corrplot)
+```
+Next, we load the files into R.
+```{r}
+
+destfile1 <- "./data/pml-training.csv"
+destfile2 <- "./data/pml-testing.csv"
+
+train_data <- read.csv(destfile1, na.strings= c("NA",""," "))
+```
+We now clean up the data by removing all variables that is NA.
+```{r}
+#Remove NAs
+train_data_NA <- apply(train_data, 2, function(x) {sum(is.na(x))})
+train_data_clean <- train_data[,which(train_data_NA == 0)]
+```
+Next we remove those variables that are timestamp and equipment info.
+```{r}
+#Remove Timestamp
+train_data_clean <- train_data_clean[8:length(train_data_clean)]
+```
+##Model Selection
+The training data is further split into training data and cross validation data.
+```{r}
+inTrain <- createDataPartition(y = train_data_clean$classe, p = 0.7, list = FALSE)
+training <- train_data_clean[inTrain, ]
+crossval <- train_data_clean[-inTrain, ]
+```
+Lets take a look at how the data looks like,
+```{r}
+correlMatrix <- cor(training[, -length(training)])
+corrplot(correlMatrix, order = "FPC", method = "circle", type = "lower", tl.cex = 0.8,  tl.col = rgb(0, 0, 0))
+```
+Random forest model was selected as it does not overfit and it is fast.
+```{r}
+modelFit <- randomForest(classe ~ ., data = training)
+modelFit
+```
+Us we can see the error rate is very low.
+
+##Cross-validation
+Lets compare the predication against the remaining 30% of data.
+```
+crossValResult<- predict(modelFit,crossval)
+confusionMatrix(crossValResult, crossValResult)
+```
+We can see that the accurancy rate is very high.
+
+##Predictions
+We shall use the test set data to see if our model is correct.
+```{r}
+test_data <- read.csv(destfile2, na.strings= c("NA",""," "))
+
+test_data_NAs <- apply(test_data, 2, function(x) {sum(is.na(x))})
+test_data_clean <- test_data[,which(test_data_NAs == 0)]
+test_data_clean <- test_data_clean[8:length(test_data_clean)]
+
+result<- predict(modelFit,test_data_clean)
+result
+```
